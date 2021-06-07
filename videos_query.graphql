@@ -84,6 +84,7 @@ fragment BasicChannelFields on Channel {
   id
   title
   createdAt
+  createdById
   avatarPhotoUrls
   avatarPhotoAvailability
   avatarPhotoDataObject {

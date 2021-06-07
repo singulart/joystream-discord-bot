@@ -1,5 +1,5 @@
 const Discord = require("discord.js");
-import { wsLocation } from "../config";
+import { channelName, hydraLocation } from "../config";
 import { readFileSync } from 'fs';
 import axios from 'axios';
 import moment from 'moment';
@@ -18,8 +18,9 @@ const main = async () => {
 
   client.login(process.env.TOKEN); // environment variable TOKEN must be set
 
-  client.on("ready", () => {
+  client.on("ready", async () => {
     console.log(`Logged in.`);
+    await client.channels.fetch(channelName);
   });
   
   client.on("message", (msg: { content: string | string[]; reply: (arg0: string) => void; author: any; }) => {
@@ -34,15 +35,22 @@ const main = async () => {
     console.log('Checking for new videos uploaded since ' + formattedDate);
 
     await axios
-      .post(wsLocation, httpRequestBody.replace('__DATE_AFTER__', formattedDate), {headers: {'Content-Type': 'application/json'}})
+      .post(hydraLocation, httpRequestBody.replace('__DATE_AFTER__', formattedDate), {headers: {'Content-Type': 'application/json'}})
       .then((res: any) => {
         console.log(`statusCode: ${res.status}`);
         let response: IVideoResponse = <IVideoResponse>res.data;
         if(response.data.videosConnection) {
           for (let edge of response.data.videosConnection.edges) {            
-            console.log("Title: " + edge.node.title);
-            console.log("Duration: " + edge.node.duration);
-            console.log("Channel Title: " + edge.node.channel.title);
+            const channel = client.channels.cache.get(channelName);
+            const exampleEmbed = new Discord.MessageEmbed()
+              .setColor('#0099ff')
+              .setTitle(edge.node.title)
+              .setURL('https://play.joystream.org/video/' + edge.node.id)
+              .setAuthor(edge.node.channel.title, 'https://i.imgur.com/wSTFkRM.png', 'https://play.joystream.org/channel/' + edge.node.channel.id)
+              .setDescription(edge.node.description)
+              .setThumbnail('https://raw.githubusercontent.com/Joystream/design/master/logo/logo%20icon/SVG/Icon-basic-0bg.svg')
+              .setTimestamp();
+            channel.send(exampleEmbed);
           }  
         }
       })
@@ -72,6 +80,7 @@ interface IVideo {
 
 interface INode {
   title:    string,
+  description: string,
   duration:     string,
   id: string,
   channel: IChannel
@@ -79,7 +88,9 @@ interface INode {
 
 
 interface IChannel {
-  title:    string;
+  title:    string,
+  id: string,
+  createdById: string;
 }
 
 main().catch(console.error).finally(() => process.exit());;
