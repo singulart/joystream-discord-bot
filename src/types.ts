@@ -53,3 +53,7 @@ export interface ICategory {
 export interface ILanguage {
     iso: string;
 }
+
+export interface LooseObject {
+    [key: string]: any
+}

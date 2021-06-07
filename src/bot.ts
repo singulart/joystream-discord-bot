@@ -1,7 +1,7 @@
-import { channelId, hydraLocation, waitFor, waitTimeUnit } from "../config";
+import { channelId, hydraLocation, waitFor, waitTimeUnit, createdAgo, createdAgoUnit } from "../config";
 import { readFileSync } from 'fs';
 import axios from 'axios';
-import {IVideoResponse}  from './types';
+import {IVideoResponse, LooseObject}  from './types';
 
 const moment = require('moment')
 const momentFormat = require("moment-duration-format");
@@ -13,7 +13,7 @@ const delay = (ms: number | undefined) => new Promise(res => setTimeout(res, ms)
 const queryParams = readFileSync('./query_params.json', 'utf-8');
 const graphql = readFileSync('./videos_query.graphql', 'utf-8').replaceAll("\n", "\\n");
 const httpRequestBody = readFileSync('./request.json', 'utf-8').replace('__PARAMS__', queryParams).replace('__QUERY__', graphql);
-//const licenses = readFileSync('./licenses.json', 'utf-8');
+const licenses: LooseObject = JSON.parse(readFileSync('./licenses.json', 'utf-8'));
 
 const client = new Discord.Client();
 
@@ -29,7 +29,7 @@ const main = async () => {
   let ids = new Set()
 
   do {
-    const createdAt = moment().utc().subtract(30, waitTimeUnit);
+    const createdAt = moment().utc().subtract(createdAgo, createdAgoUnit); // current time minus some configurable number of time units
     const formattedDate = createdAt.format('YYYY-DD-MMMTHH:mm:ssZ');
     console.log(`Checking for new videos uploaded since ${formattedDate}`);
 
@@ -44,6 +44,7 @@ const main = async () => {
               console.log(`Video ${edge.node.id} already announced. `);
             } else {
               const channel = client.channels.cache.get(channelId);
+              const licenseKey = edge.node.license.code;
               const exampleEmbed = new Discord.MessageEmbed()
                 .setColor('#4038FF') // official joystream blue, see https://www.joystream.org/brand/guides/
                 .setTitle(edge.node.title)
@@ -58,7 +59,7 @@ const main = async () => {
                   { name: 'Category', value: edge.node.category.name, inline: true},
                   { name: 'Duration', value: moment.duration(edge.node.duration, 'seconds').format("hh:mm:ss"), inline: true },
                   { name: 'Language', value: edge.node.language.iso, inline: true },
-                  { name: 'License', value: edge.node.license.code, inline: true },
+                  { name: 'License', value: licenses[licenseKey], inline: true },
                 )
                 .setImage(`${edge.node.thumbnailPhotoDataObject.liaison.metadata}asset/v0/${edge.node.thumbnailPhotoDataObject.joystreamContentId}`)
                 .setTimestamp();
