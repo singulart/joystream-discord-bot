@@ -17,7 +17,7 @@ export interface IVideo {
 export interface INode {
     title: string,
     description: string,
-    duration: string,
+    duration: number,
     id: string,
     thumbnailPhotoDataObject: IThumb,
     channel: IChannel,

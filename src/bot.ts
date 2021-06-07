@@ -57,7 +57,7 @@ const main = async () => {
                 .addFields(
                   { name: 'ID', value: edge.node.id, inline: true },
                   { name: 'Category', value: edge.node.category.name, inline: true},
-                  { name: 'Duration', value: moment.duration(edge.node.duration, 'seconds').format("hh:mm:ss"), inline: true },
+                  { name: 'Duration', value: durationFormat(edge.node.duration), inline: true },
                   { name: 'Language', value: edge.node.language.iso, inline: true },
                   { name: 'License', value: licenses[licenseKey], inline: true },
                 )
@@ -80,5 +80,12 @@ const main = async () => {
 
 }
 
+const durationFormat = (duration: number) => {
+  if (duration < 60) {
+    return `${duration}s.`
+  } else {
+     return moment.duration(duration, 'seconds').format("hh:mm:ss")
+  }
+}
 
 main().catch(console.error).finally(() => process.exit());;
