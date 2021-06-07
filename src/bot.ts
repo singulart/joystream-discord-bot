@@ -1,5 +1,5 @@
 const Discord = require("discord.js");
-import { token, wsLocation } from "../config";
+import { wsLocation } from "../config";
 import { readFileSync } from 'fs';
 import axios from 'axios';
 import moment from 'moment';
@@ -16,7 +16,7 @@ const client = new Discord.Client();
 
 const main = async () => {
 
-  client.login(token);
+  client.login(process.env.TOKEN); // environment variable TOKEN must be set
 
   client.on("ready", () => {
     console.log(`Logged in.`);
@@ -33,27 +33,22 @@ const main = async () => {
     const formattedDate = createdAt.format('YYYY-DD-MMMTHH:mm:ssZ');
     console.log('Checking for new videos uploaded since ' + formattedDate);
 
-    //console.log(httpRequestBody.replace('__DATE_AFTER__', formattedDate));
     await axios
       .post(wsLocation, httpRequestBody.replace('__DATE_AFTER__', formattedDate), {headers: {'Content-Type': 'application/json'}})
       .then((res: any) => {
         console.log(`statusCode: ${res.status}`);
-        console.log(res.data);
         let response: IVideoResponse = <IVideoResponse>res.data;
         if(response.data.videosConnection) {
           for (let edge of response.data.videosConnection.edges) {            
             console.log("Title: " + edge.node.title);
             console.log("Duration: " + edge.node.duration);
             console.log("Channel Title: " + edge.node.channel.title);
-            
-            // Use `key` and `value`
           }  
         }
       })
       .catch((error: any) => {
         console.error(error);
       });
-      console.log('Waiting for next run...');
       await delay(10000);
   } while (true);
 
