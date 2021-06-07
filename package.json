@@ -13,6 +13,7 @@
     "@types/bn.js": "^4.11.5",
     "discord.js": "^12.5.3",
     "moment": "^2.29.1",
+    "moment-duration-format": "^2.3.2",
     "bn.js": "^4.11.8",
     "axios": "^0.21.1"
   },  

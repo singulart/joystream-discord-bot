@@ -1,8 +1,12 @@
-const Discord = require("discord.js");
-import { channelName, hydraLocation } from "../config";
+import { channelId, hydraLocation, waitFor, waitTimeUnit } from "../config";
 import { readFileSync } from 'fs';
 import axios from 'axios';
-import moment from 'moment';
+import {IVideoResponse}  from './types';
+
+const moment = require('moment')
+const momentFormat = require("moment-duration-format");
+const Discord = require("discord.js");
+momentFormat(moment);
 
 const delay = (ms: number | undefined) => new Promise(res => setTimeout(res, ms));
 
@@ -16,81 +20,64 @@ const client = new Discord.Client();
 
 const main = async () => {
 
-  client.login(process.env.TOKEN); // environment variable TOKEN must be set
+  await client.login(process.env.TOKEN); // environment variable TOKEN must be set
 
-  client.on("ready", async () => {
+  await client.on("ready", async () => {
     console.log(`Logged in.`);
-    await client.channels.fetch(channelName);
+    await client.channels.fetch(channelId);
   });
   
-  client.on("message", (msg: { content: string | string[]; reply: (arg0: string) => void; author: any; }) => {
-    if (msg.content.includes("@joystream-bot"))
-      msg.reply(`Hello, ${msg.author}!`);
-  });
+  let ids = new Set()
 
   do {
-    const now = moment();
-    const createdAt = moment(now).subtract(100, 'minutes');
+    const createdAt = moment().utc().subtract(30, waitTimeUnit);
     const formattedDate = createdAt.format('YYYY-DD-MMMTHH:mm:ssZ');
-    console.log('Checking for new videos uploaded since ' + formattedDate);
+    console.log(`Checking for new videos uploaded since ${formattedDate}`);
 
     await axios
       .post(hydraLocation, httpRequestBody.replace('__DATE_AFTER__', formattedDate), {headers: {'Content-Type': 'application/json'}})
       .then((res: any) => {
-        console.log(`statusCode: ${res.status}`);
         let response: IVideoResponse = <IVideoResponse>res.data;
         if(response.data.videosConnection) {
+          console.log(`${response.data.videosConnection.edges.length} new videos uploaded`)
           for (let edge of response.data.videosConnection.edges) {            
-            const channel = client.channels.cache.get(channelName);
-            const exampleEmbed = new Discord.MessageEmbed()
-              .setColor('#0099ff')
-              .setTitle(edge.node.title)
-              .setURL('https://play.joystream.org/video/' + edge.node.id)
-              .setAuthor(edge.node.channel.title, 'https://i.imgur.com/wSTFkRM.png', 'https://play.joystream.org/channel/' + edge.node.channel.id)
-              .setDescription(edge.node.description)
-              .setThumbnail('https://raw.githubusercontent.com/Joystream/design/master/logo/logo%20icon/SVG/Icon-basic-0bg.svg')
-              .setTimestamp();
-            channel.send(exampleEmbed);
+            if(ids.has(edge.node.id)) {
+              console.log(`Video ${edge.node.id} already announced. `);
+            } else {
+              const channel = client.channels.cache.get(channelId);
+              const exampleEmbed = new Discord.MessageEmbed()
+                .setColor('#4038FF') // official joystream blue, see https://www.joystream.org/brand/guides/
+                .setTitle(edge.node.title)
+                .setURL(`https://play.joystream.org/video/${edge.node.id}`)
+                .setAuthor(edge.node.channel.title, 
+                  `${edge.node.channel.avatarPhotoDataObject.liaison.metadata}asset/v0/${edge.node.channel.avatarPhotoDataObject.joystreamContentId}`, 
+                  `https://play.joystream.org/channel/${edge.node.channel.id}`
+                )
+                .setDescription(edge.node.description)
+                .addFields(
+                  { name: 'ID', value: edge.node.id, inline: true },
+                  { name: 'Category', value: edge.node.category.name, inline: true},
+                  { name: 'Duration', value: moment.duration(edge.node.duration, 'seconds').format("hh:mm:ss"), inline: true },
+                  { name: 'Language', value: edge.node.language.iso, inline: true },
+                )
+                .setThumbnail(`${edge.node.thumbnailPhotoDataObject.liaison.metadata}asset/v0/${edge.node.thumbnailPhotoDataObject.joystreamContentId}`)
+                .setTimestamp();
+              channel.send(exampleEmbed);
+              ids.add(edge.node.id);
+              }
           }  
         }
       })
       .catch((error: any) => {
         console.error(error);
       });
-      await delay(10000);
+
+      // waiting... 
+      await delay(moment.duration(waitFor, waitTimeUnit).asMilliseconds());
+
   } while (true);
 
 }
 
-interface IVideoResponse {
-  data: IData
-}
-
-interface IData {
-  videosConnection: IVideoConnection
-}
-
-interface IVideoConnection {
-  edges: IVideo[]
-}
-
-interface IVideo {
-  node: INode
-}
-
-interface INode {
-  title:    string,
-  description: string,
-  duration:     string,
-  id: string,
-  channel: IChannel
-}
-
-
-interface IChannel {
-  title:    string,
-  id: string,
-  createdById: string;
-}
 
 main().catch(console.error).finally(() => process.exit());;

@@ -33,6 +33,7 @@ fragment VideoFields on Video {
   description
   category {
     id
+    name
     __typename
   }
   duration
