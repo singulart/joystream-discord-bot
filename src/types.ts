@@ -22,7 +22,12 @@ export interface INode {
     thumbnailPhotoDataObject: IThumb,
     channel: IChannel,
     category: ICategory,
-    language: ILanguage
+    language: ILanguage,
+    license: ILicense
+}
+
+export interface ILicense {
+    code: string
 }
 
 export interface IThumb {
